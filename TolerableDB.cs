@@ -10,10 +10,12 @@ namespace Tolerable
 {
 	public static class DB
 	{
+			public static class DB
+	{
 		/// <summary>
 		/// Execute command with optional positional parameters
 		/// </summary>
-		public static int Execute(this IDbConnection dbConnection, string commandText, object[] parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
+		public static int Execute(this IDbConnection dbConnection, string commandText, IList<object> parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
 		{
 			using (var cmd = PrepareCommand(dbConnection, commandText, transaction, null, commandType, parameters))
 			{
@@ -45,11 +47,11 @@ namespace Tolerable
 			}
 			return total;
 		}
-		
+
 		/// <summary>
 		/// Invokes selector once for every row in result
 		/// </summary>
-		public static IEnumerable<T> Read<T>(this IDbConnection dbConnection, string commandText, object[] parameters, Func<IDataReader, T> selector, IDbTransaction transaction = null, CommandType? commandType = null)
+		public static IEnumerable<T> Read<T>(this IDbConnection dbConnection, string commandText, IList<object> parameters, Func<IDataReader, T> selector, IDbTransaction transaction = null, CommandType? commandType = null)
 		{
 			using (var cmd = PrepareCommand(dbConnection, commandText, transaction, null, commandType, parameters))
 			{
@@ -105,7 +107,7 @@ namespace Tolerable
 		/// <summary>
 		/// Select column names corresponding to T's constructor with most parameters. Useful with anonymous types
 		/// </summary>
-		public static IEnumerable<T> Select<T>(this IDbConnection dbConnection, Func<IDataReader, T> selector, string commandText, object[] parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
+		public static IEnumerable<T> Select<T>(this IDbConnection dbConnection, Func<IDataReader, T> selector, string commandText, IList<object> parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
 		{
 			return Read<T>(dbConnection, AddColumnNames(typeof(T), commandText), parameters, selector, transaction, commandType);
 		}
@@ -113,7 +115,7 @@ namespace Tolerable
 		/// <summary>
 		/// Invoke action for every row in result
 		/// </summary>
-		public static void ForEach(this IDbConnection dbConnection, string commandText, Action<IDataReader> action, object[] parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
+		public static void ForEach(this IDbConnection dbConnection, string commandText, Action<IDataReader> action, IList<object> parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
 		{
 			using (var cmd = PrepareCommand(dbConnection, commandText, transaction, null, commandType, parameters))
 			{
@@ -130,7 +132,7 @@ namespace Tolerable
 		/// <summary>
 		/// Invoke predicate for every row in result.  Return false to stop iteration.
 		/// </summary>
-		public static void ForEach(this IDbConnection dbConnection, string commandText, Func<IDataReader, bool> predicate, object[] parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
+		public static void ForEach(this IDbConnection dbConnection, string commandText, Func<IDataReader, bool> predicate, IList<object> parameters = null, IDbTransaction transaction = null, CommandType? commandType = null)
 		{
 			using (var cmd = PrepareCommand(dbConnection, commandText, transaction, null, commandType, parameters))
 			{
@@ -141,7 +143,7 @@ namespace Tolerable
 			}
 		}
 		
-		private static IDbCommand PrepareCommand(IDbConnection dbConnection, string commandText, IDbTransaction transaction = null, int? commandTimeout = null, CommandType? commandType = null, object[] parameterValues = null)
+		private static IDbCommand PrepareCommand(IDbConnection dbConnection, string commandText, IDbTransaction transaction = null, int? commandTimeout = null, CommandType? commandType = null, IList<object> parameterValues = null)
 		{
 			var cmd = dbConnection.CreateCommand();
 			if (transaction != null)
@@ -154,14 +156,19 @@ namespace Tolerable
 
 			if (parameterValues != null)
 			{
+				int index = 0;
 				foreach (var value in parameterValues)
 				{
 					var dbParam = cmd.CreateParameter();
 					dbParam.Value = value;
+					dbParam.ParameterName = "@" + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+					index++;
 					cmd.Parameters.Add(dbParam);
 				}
 			}
 			return cmd;
 		}
+	}
+
 	}
 }
